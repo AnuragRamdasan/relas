@@ -19,14 +19,30 @@ export default function Subscription() {
         }),
       })
 
-      const { sessionId } = await response.json()
+      if (!response.ok) {
+        throw new Error(`Failed to create checkout session: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      
+      if (!data.sessionId) {
+        throw new Error("No session ID returned from server")
+      }
+
       const stripe = await stripePromise
 
-      if (stripe) {
-        await stripe.redirectToCheckout({ sessionId })
+      if (!stripe) {
+        throw new Error("Stripe failed to load")
+      }
+
+      const { error } = await stripe.redirectToCheckout({ sessionId: data.sessionId })
+      
+      if (error) {
+        throw new Error(error.message)
       }
     } catch (error) {
       console.error("Subscription error:", error)
+      alert(`Subscription failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
     setLoading(false)
   }

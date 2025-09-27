@@ -4,17 +4,24 @@ import { stripe } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
 import Stripe from "stripe"
 
+// Simple in-memory cache for processed events (use Redis in production)
+const processedEvents = new Set<string>()
+
 export async function POST(request: NextRequest) {
   const body = await request.text()
   const headersList = await headers()
   const signature = headersList.get("stripe-signature")
+
+  if (!signature) {
+    return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 })
+  }
 
   let event: Stripe.Event
 
   try {
     event = stripe.webhooks.constructEvent(
       body,
-      signature!,
+      signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     )
   } catch (err) {
@@ -22,14 +29,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Webhook Error" }, { status: 400 })
   }
 
+  // Check for duplicate events
+  if (processedEvents.has(event.id)) {
+    console.log(`Duplicate event received: ${event.id}`)
+    return NextResponse.json({ received: true, duplicate: true })
+  }
+  
+  // Mark event as processed
+  processedEvents.add(event.id)
+  
+  // Clean up old events (keep last 1000)
+  if (processedEvents.size > 1000) {
+    const eventArray = Array.from(processedEvents)
+    processedEvents.clear()
+    eventArray.slice(-500).forEach(id => processedEvents.add(id))
+  }
+
   switch (event.type) {
     case "checkout.session.completed":
       const session = event.data.object as Stripe.Checkout.Session
       
-      if (session.mode === "subscription") {
-        const subscription = await stripe.subscriptions.retrieve(
-          session.subscription as string
-        )
+      if (session.mode === "subscription" && session.subscription) {
+        const subscriptionId = typeof session.subscription === 'string' 
+          ? session.subscription 
+          : session.subscription.id
+          
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         
         if (session.metadata?.userId) {
           await handleSubscriptionCreated(subscription, session.metadata.userId)
