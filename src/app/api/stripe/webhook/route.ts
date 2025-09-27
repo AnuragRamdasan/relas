@@ -61,7 +61,10 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleSubscriptionCreated(
-  subscription: Stripe.Subscription,
+  subscription: Stripe.Subscription & { 
+    current_period_start: number; 
+    current_period_end: number; 
+  },
   userId: string
 ) {
   try {
@@ -89,7 +92,11 @@ async function handleSubscriptionCreated(
   }
 }
 
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription & { 
+  current_period_start: number; 
+  current_period_end: number; 
+  cancel_at_period_end: boolean;
+}) {
   try {
     const existingSubscription = await prisma.subscription.findUnique({
       where: { stripeSubscriptionId: subscription.id },
