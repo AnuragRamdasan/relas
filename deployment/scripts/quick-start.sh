@@ -56,9 +56,11 @@ echo "⚙️ Setting up environment variables..."
 if [ ! -f ".env" ]; then
     cp .env.production.example .env
     
-    # Generate secure secret
-    SECRET=$(openssl rand -hex 32)
-    sed -i "s/your-very-secure-secret-key-at-least-32-characters/$SECRET/g" .env
+    # Generate secure secrets
+    echo "🔐 Generating secure secrets..."
+    ./deployment/scripts/generate-secrets.sh
+    
+    # Update domain
     sed -i "s/your-domain.com/$DOMAIN/g" .env
     
     echo ""
