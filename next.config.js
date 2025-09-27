@@ -5,7 +5,7 @@ const nextConfig = {
   images: {
     domains: ['lh3.googleusercontent.com'],
   },
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+  webpack: (config, { isServer }) => {
     // Handle Prisma client for standalone builds
     if (isServer) {
       config.externals.push('@prisma/client')

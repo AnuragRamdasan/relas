@@ -7,6 +7,13 @@ import Stripe from "stripe"
 // Simple in-memory cache for processed events (use Redis in production)
 const processedEvents = new Set<string>()
 
+// Extended Stripe types for webhook data
+interface StripeSubscriptionWithPeriods extends Stripe.Subscription {
+  current_period_start: number
+  current_period_end: number
+  cancel_at_period_end: boolean
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.text()
   const headersList = await headers()
@@ -86,10 +93,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleSubscriptionCreated(
-  subscription: Stripe.Subscription & { 
-    current_period_start: number; 
-    current_period_end: number; 
-  },
+  subscription: Stripe.Subscription,
   userId: string
 ) {
   try {
@@ -99,8 +103,8 @@ async function handleSubscriptionCreated(
         userId,
         stripeSubscriptionId: subscription.id,
         status: subscription.status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodStart: new Date((subscription as StripeSubscriptionWithPeriods).current_period_start * 1000),
+        currentPeriodEnd: new Date((subscription as StripeSubscriptionWithPeriods).current_period_end * 1000),
       },
     })
 
@@ -117,11 +121,7 @@ async function handleSubscriptionCreated(
   }
 }
 
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription & { 
-  current_period_start: number; 
-  current_period_end: number; 
-  cancel_at_period_end: boolean;
-}) {
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   try {
     const existingSubscription = await prisma.subscription.findUnique({
       where: { stripeSubscriptionId: subscription.id },
@@ -133,9 +133,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription & {
         where: { stripeSubscriptionId: subscription.id },
         data: {
           status: subscription.status,
-          currentPeriodStart: new Date(subscription.current_period_start * 1000),
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          currentPeriodStart: new Date((subscription as StripeSubscriptionWithPeriods).current_period_start * 1000),
+          currentPeriodEnd: new Date((subscription as StripeSubscriptionWithPeriods).current_period_end * 1000),
+          cancelAtPeriodEnd: (subscription as StripeSubscriptionWithPeriods).cancel_at_period_end,
         },
       })
 

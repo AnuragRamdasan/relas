@@ -101,10 +101,16 @@ async function buildConversationContext(
   })
 
   return {
-    recentMessages: recentMessages.reverse(),
+    recentMessages: recentMessages.reverse().map(msg => ({
+      content: msg.content,
+      sender: msg.sender,
+      createdAt: msg.createdAt,
+      sentiment: msg.sentiment || undefined,
+      emotions: msg.emotions,
+    })),
     userContext: userContext || {},
-    conversationSummary: conversation?.contextSummary,
-    topicTags: conversation?.topicTags,
+    conversationSummary: conversation?.contextSummary || undefined,
+    topicTags: conversation?.topicTags || undefined,
   }
 }
 
@@ -216,7 +222,7 @@ Remember: You're not just here to make them feel good, but to genuinely help the
 
 function buildConversationHistory(messages: Array<{ content: string; sender: string }>) {
   return messages.slice(-10).map(msg => ({
-    role: msg.sender === "user" ? "user" : "assistant",
+    role: (msg.sender === "user" ? "user" : "assistant") as "user" | "assistant",
     content: msg.content,
   }))
 }

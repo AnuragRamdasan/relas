@@ -31,7 +31,12 @@ export async function GET() {
       },
     })
 
-    const formattedData = sentimentLogs.map(log => ({
+    const formattedData = sentimentLogs.map((log: {
+      sentiment: string;
+      emotions: string[];
+      intensity: number;
+      createdAt: Date;
+    }) => ({
       date: log.createdAt.toISOString(),
       sentiment: log.sentiment,
       emotions: log.emotions,

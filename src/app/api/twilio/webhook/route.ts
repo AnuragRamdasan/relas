@@ -69,13 +69,13 @@ export async function POST(request: NextRequest) {
     // Generate AI response with analysis
     const userProfile = {
       id: user.id,
-      name: user.name,
-      gender: user.gender,
-      age: user.age,
+      name: user.name || undefined,
+      gender: user.gender || undefined,
+      age: user.age || undefined,
       location: [user.city, user.state, user.country].filter(Boolean).join(", "),
-      personalityProfile: user.personalityProfile,
-      preferredCommunicationStyle: user.preferredCommunicationStyle,
-      context: user.context,
+      personalityProfile: (user.personalityProfile as Record<string, unknown>) || undefined,
+      preferredCommunicationStyle: user.preferredCommunicationStyle || undefined,
+      context: (user.context as Record<string, unknown>) || undefined,
     }
 
     const aiResult = await generateRelationshipResponse(
