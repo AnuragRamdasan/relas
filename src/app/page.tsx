@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
@@ -8,7 +8,7 @@ export default function Home() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  const checkUserOnboarding = async () => {
+  const checkUserOnboarding = useCallback(async () => {
     try {
       const response = await fetch("/api/user/profile")
       if (response.ok) {
@@ -29,7 +29,7 @@ export default function Home() {
       console.error("Error checking user status:", error)
       router.push("/onboarding")
     }
-  }
+  }, [router])
 
   useEffect(() => {
     if (status === "loading") return // Still loading

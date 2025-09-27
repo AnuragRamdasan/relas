@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { loadStripe } from "@stripe/stripe-js"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)

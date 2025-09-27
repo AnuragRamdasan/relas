@@ -58,7 +58,7 @@ export async function generateRelationshipResponse(
     )
 
     // Update user context based on conversation
-    await updateUserContext(user.id, message, messageAnalysis, response)
+    await updateUserContext(user.id, message, messageAnalysis)
 
     return {
       response: response.content,
@@ -70,7 +70,7 @@ export async function generateRelationshipResponse(
   } catch (error) {
     console.error("OpenAI generation error:", error)
     return {
-      response: getFallbackResponse(message),
+      response: getFallbackResponse(),
       sentiment: "neutral",
       emotions: [],
       topics: [],
@@ -171,7 +171,7 @@ async function generatePersonalizedResponse(
   })
 
   return {
-    content: completion.choices[0].message.content?.trim() || getFallbackResponse(message),
+    content: completion.choices[0].message.content?.trim() || getFallbackResponse(),
   }
 }
 
@@ -224,8 +224,7 @@ function buildConversationHistory(messages: Array<{ content: string; sender: str
 async function updateUserContext(
   userId: string,
   message: string,
-  analysis: { sentiment: string; emotions: string[]; topics: string[] },
-  _response: { content: string }
+  analysis: { sentiment: string; emotions: string[]; topics: string[] }
 ) {
   try {
     const existingContext = await prisma.userContext.findUnique({
@@ -267,7 +266,7 @@ async function updateUserContext(
   }
 }
 
-function getFallbackResponse(_message: string): string {
+function getFallbackResponse(): string {
   const fallbacks = [
     "I hear you. Can you tell me more about what's happening?",
     "That sounds challenging. How are you feeling about the situation?",
