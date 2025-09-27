@@ -1,0 +1,195 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  phone         String?   @unique
+  
+  // Onboarding fields
+  gender        String?
+  age           Int?
+  ethnicity     String?
+  city          String?
+  state         String?
+  country       String?
+  
+  // Subscription status
+  isSubscribed  Boolean   @default(false)
+  stripeCustomerId String? @unique
+  
+  // AI personality tracking
+  personalityProfile Json? // Stores AI analysis of user personality
+  preferredCommunicationStyle String? // formal, casual, supportive, direct
+  
+  accounts      Account[]
+  sessions      Session[]
+  subscription  Subscription?
+  conversations Conversation[]
+  messages      Message[]
+  sentimentLogs SentimentLog[]
+  context       UserContext?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Subscription {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  stripeSubscriptionId String @unique
+  status            String   // active, canceled, past_due, etc.
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd Boolean  @default(false)
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Conversation {
+  id            String    @id @default(cuid())
+  userId        String
+  title         String?   // Auto-generated summary of conversation
+  status        String    @default("active") // active, archived
+  
+  // Conversation metadata
+  totalMessages Int       @default(0)
+  lastMessageAt DateTime  @default(now())
+  
+  // Conversation context for AI
+  contextSummary String?  @db.Text // AI-generated summary of conversation
+  topicTags      String[] // relationship, communication, conflict, etc.
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId, lastMessageAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  content        String   @db.Text
+  sender         String   // user, assistant
+  
+  // Message metadata
+  messageType    String   @default("text") // text, image, etc.
+  platform       String   // sms, whatsapp, web
+  
+  // AI analysis
+  sentiment      String?  // positive, negative, neutral, mixed
+  emotions       String[] // happy, sad, angry, frustrated, etc.
+  topics         String[] // relationship issues, communication, etc.
+  urgencyLevel   Int?     // 1-5 scale
+  
+  // References to previous conversations
+  referencedMessageIds String[] // Messages this response references
+  
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+model SentimentLog {
+  id          String   @id @default(cuid())
+  userId      String
+  messageId   String?  // Optional reference to specific message
+  
+  sentiment   String   // positive, negative, neutral, mixed
+  confidence  Float    // 0-1 confidence score
+  emotions    String[] // Array of detected emotions
+  intensity   Float    // 0-1 emotional intensity
+  
+  // Contextual information
+  triggers    String[] // What caused this sentiment
+  patterns    String[] // Recurring patterns identified
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId, createdAt])
+}
+
+model UserContext {
+  id       String @id @default(cuid())
+  userId   String @unique
+  
+  // Long-term memory for AI
+  relationshipHistory    Json? // Past relationships, patterns
+  communicationPatterns  Json? // How user typically communicates
+  triggerPoints          Json? // What typically causes issues
+  growthAreas           Json? // Areas user is working on
+  successStories        Json? // Positive outcomes and progress
+  
+  // Preferences
+  preferredAdviceStyle  String? // supportive, direct, analytical
+  boundaryPreferences   Json?   // What topics to avoid/focus on
+  
+  // Progress tracking
+  improvementGoals      Json? // Current relationship goals
+  milestonesAchieved    Json? // Progress made
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
