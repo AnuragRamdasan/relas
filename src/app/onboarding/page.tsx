@@ -82,7 +82,7 @@ export default function Onboarding() {
               Welcome, {session?.user?.name}!
             </h1>
             <p className="text-gray-600">
-              Let's get to know you better to provide personalized relationship guidance
+              Let&apos;s get to know you better to provide personalized relationship guidance
             </p>
           </div>
 

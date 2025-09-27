@@ -25,7 +25,11 @@ export default function Dashboard() {
   const [conversations, setConversations] = useState<ConversationData[]>([])
   const [sentimentHistory, setSentimentHistory] = useState<SentimentData[]>([])
   const [loading, setLoading] = useState(true)
-  const [userProfile, setUserProfile] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<{
+    isSubscribed: boolean;
+    phone?: string;
+    name?: string;
+  } | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {

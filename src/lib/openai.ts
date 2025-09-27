@@ -11,9 +11,9 @@ export interface UserProfile {
   gender?: string
   age?: number
   location?: string
-  personalityProfile?: any
+  personalityProfile?: Record<string, unknown>
   preferredCommunicationStyle?: string
-  context?: any
+  context?: Record<string, unknown>
 }
 
 export interface ConversationContext {
@@ -24,7 +24,7 @@ export interface ConversationContext {
     sentiment?: string
     emotions?: string[]
   }>
-  userContext: any
+  userContext: Record<string, unknown>
   conversationSummary?: string
   topicTags?: string[]
 }
@@ -153,7 +153,7 @@ async function generatePersonalizedResponse(
   user: UserProfile,
   message: string,
   context: ConversationContext,
-  analysis: any,
+  analysis: { sentiment: string; emotions: string[]; topics: string[]; urgencyLevel: number },
   platform: string
 ) {
   const systemPrompt = buildSystemPrompt(user, context, platform)
@@ -214,7 +214,7 @@ ${platformGuidance}
 Remember: You're not just here to make them feel good, but to genuinely help their relationship improve.`
 }
 
-function buildConversationHistory(messages: any[]) {
+function buildConversationHistory(messages: Array<{ content: string; sender: string }>) {
   return messages.slice(-10).map(msg => ({
     role: msg.sender === "user" ? "user" : "assistant",
     content: msg.content,
@@ -224,16 +224,16 @@ function buildConversationHistory(messages: any[]) {
 async function updateUserContext(
   userId: string,
   message: string,
-  analysis: any,
-  response: any
+  analysis: { sentiment: string; emotions: string[]; topics: string[] },
+  _response: { content: string }
 ) {
   try {
     const existingContext = await prisma.userContext.findUnique({
       where: { userId },
     })
 
-    const currentPatterns = existingContext?.communicationPatterns || {}
-    const currentTriggers = existingContext?.triggerPoints || {}
+    const currentPatterns = (existingContext?.communicationPatterns as Record<string, number>) || {}
+    const currentTriggers = (existingContext?.triggerPoints as Record<string, number>) || {}
 
     // Update communication patterns
     if (analysis.emotions.length > 0) {
@@ -267,7 +267,7 @@ async function updateUserContext(
   }
 }
 
-function getFallbackResponse(message: string): string {
+function getFallbackResponse(_message: string): string {
   const fallbacks = [
     "I hear you. Can you tell me more about what's happening?",
     "That sounds challenging. How are you feeling about the situation?",

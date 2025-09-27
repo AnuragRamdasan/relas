@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
           session.subscription as string
         )
         
-        await handleSubscriptionCreated(subscription, session.metadata?.userId!)
+        if (session.metadata?.userId) {
+          await handleSubscriptionCreated(subscription, session.metadata.userId)
+        }
       }
       break
 

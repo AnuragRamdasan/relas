@@ -8,17 +8,6 @@ export default function Home() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  useEffect(() => {
-    if (status === "loading") return // Still loading
-
-    if (status === "unauthenticated") {
-      router.push("/auth/signin")
-    } else if (session?.user) {
-      // Check if user needs onboarding
-      checkUserOnboarding()
-    }
-  }, [status, session, router])
-
   const checkUserOnboarding = async () => {
     try {
       const response = await fetch("/api/user/profile")
@@ -41,6 +30,17 @@ export default function Home() {
       router.push("/onboarding")
     }
   }
+
+  useEffect(() => {
+    if (status === "loading") return // Still loading
+
+    if (status === "unauthenticated") {
+      router.push("/auth/signin")
+    } else if (session?.user) {
+      // Check if user needs onboarding
+      checkUserOnboarding()
+    }
+  }, [status, session, router, checkUserOnboarding])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
