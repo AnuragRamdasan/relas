@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       break
 
     case "invoice.payment_succeeded":
-      const invoice = event.data.object as Stripe.Invoice
+      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription }
       if (invoice.subscription) {
         const subscriptionId = typeof invoice.subscription === 'string' 
           ? invoice.subscription 
