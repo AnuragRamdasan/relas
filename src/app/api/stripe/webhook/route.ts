@@ -8,12 +8,7 @@ import Stripe from "stripe"
 // Simple in-memory cache for processed events (use Redis in production)
 const processedEvents = new Set<string>()
 
-// Extended Stripe types for webhook data
-interface StripeSubscriptionWithPeriods extends Stripe.Subscription {
-  current_period_start: number
-  current_period_end: number
-  cancel_at_period_end: boolean
-}
+// Note: We handle date fields safely since they may be undefined in some webhook events
 
 export async function POST(request: NextRequest) {
   try {
@@ -164,14 +159,32 @@ async function handleSubscriptionCreated(
   try {
     console.log(`handleSubscriptionCreated called for userId: ${userId}, subscriptionId: ${subscription.id}`)
     
-    // Create subscription record
+    // Create subscription record with safe date handling
+    const subscriptionData = subscription as Stripe.Subscription & { 
+      current_period_start?: number; 
+      current_period_end?: number; 
+    }
+    const currentPeriodStart = subscriptionData.current_period_start 
+      ? new Date(subscriptionData.current_period_start * 1000) 
+      : new Date()
+    const currentPeriodEnd = subscriptionData.current_period_end 
+      ? new Date(subscriptionData.current_period_end * 1000) 
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default to 30 days from now
+      
+    console.log(`Creating subscription with dates:`, {
+      currentPeriodStart: currentPeriodStart.toISOString(),
+      currentPeriodEnd: currentPeriodEnd.toISOString(),
+      rawStart: subscriptionData.current_period_start,
+      rawEnd: subscriptionData.current_period_end
+    })
+    
     const subscriptionRecord = await prisma.subscription.create({
       data: {
         userId,
         stripeSubscriptionId: subscription.id,
         status: subscription.status,
-        currentPeriodStart: new Date((subscription as StripeSubscriptionWithPeriods).current_period_start * 1000),
-        currentPeriodEnd: new Date((subscription as StripeSubscriptionWithPeriods).current_period_end * 1000),
+        currentPeriodStart,
+        currentPeriodEnd,
       },
     })
     console.log(`Created subscription record:`, subscriptionRecord)
@@ -214,13 +227,26 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     if (existingSubscription) {
       console.log(`Found existing subscription for userId: ${existingSubscription.userId}`)
       
+      // Safe date handling for subscription updates
+      const subscriptionData = subscription as Stripe.Subscription & { 
+        current_period_start?: number; 
+        current_period_end?: number; 
+        cancel_at_period_end?: boolean;
+      }
+      const currentPeriodStart = subscriptionData.current_period_start 
+        ? new Date(subscriptionData.current_period_start * 1000) 
+        : existingSubscription.currentPeriodStart
+      const currentPeriodEnd = subscriptionData.current_period_end 
+        ? new Date(subscriptionData.current_period_end * 1000) 
+        : existingSubscription.currentPeriodEnd
+
       await prisma.subscription.update({
         where: { stripeSubscriptionId: subscription.id },
         data: {
           status: subscription.status,
-          currentPeriodStart: new Date((subscription as StripeSubscriptionWithPeriods).current_period_start * 1000),
-          currentPeriodEnd: new Date((subscription as StripeSubscriptionWithPeriods).current_period_end * 1000),
-          cancelAtPeriodEnd: (subscription as StripeSubscriptionWithPeriods).cancel_at_period_end,
+          currentPeriodStart,
+          currentPeriodEnd,
+          cancelAtPeriodEnd: subscriptionData.cancel_at_period_end || false,
         },
       })
 
