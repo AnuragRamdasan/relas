@@ -31,6 +31,28 @@ if [ -d ".git" ]; then
     git pull origin main
 fi
 
+# Clean up nginx configuration to prevent conflicts
+echo "🧹 Cleaning nginx configuration..."
+# Remove any backup or conflicting config files
+find ./nginx/sites/ -name "*.backup" -type f -delete 2>/dev/null || true
+find ./nginx/sites/ -name "relas.conf.backup" -type f -delete 2>/dev/null || true
+find ./nginx/sites/ -name "*~" -type f -delete 2>/dev/null || true
+
+# Ensure only the main config file exists and is valid
+if [ ! -f "./nginx/sites/relas.conf" ]; then
+    echo "❌ Main nginx config file not found: ./nginx/sites/relas.conf"
+    exit 1
+fi
+
+# Validate nginx config syntax
+echo "✅ Validating nginx configuration..."
+if docker run --rm -v "$(pwd)/nginx:/etc/nginx:ro" nginx nginx -t; then
+    echo "✅ Nginx configuration is valid"
+else
+    echo "❌ Nginx configuration has syntax errors"
+    exit 1
+fi
+
 # Build and start services
 echo "🏗️ Building application..."
 docker-compose build --no-cache
@@ -54,6 +76,21 @@ docker-compose exec -T app npx prisma generate
 echo "🔍 Checking service status..."
 if docker-compose ps | grep -q "Up"; then
     echo "✅ Services are running!"
+    
+    # Special check for nginx - ensure it's actually running and not restarting
+    echo "🔍 Checking nginx specifically..."
+    if docker-compose ps nginx | grep -q "Up"; then
+        echo "✅ Nginx is running successfully!"
+    else
+        echo "❌ Nginx container has issues. Showing logs:"
+        docker-compose logs --tail=20 nginx
+        echo ""
+        echo "🔧 Common fixes:"
+        echo "   1. Check nginx config: docker-compose exec nginx nginx -t"
+        echo "   2. Remove backup configs: find ./nginx/sites/ -name '*.backup' -delete"
+        echo "   3. Restart nginx: docker-compose restart nginx"
+        exit 1
+    fi
 else
     echo "❌ Some services failed to start"
     docker-compose logs --tail=50
