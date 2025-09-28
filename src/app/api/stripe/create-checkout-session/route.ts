@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { priceId } = await request.json()
+    const { priceId, couponCode } = await request.json()
 
     // Get or create Stripe customer
     const user = await prisma.user.findUnique({
@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create checkout session
-    const checkoutSession = await stripe.checkout.sessions.create({
+    // Prepare checkout session configuration
+    const sessionConfig: any = {
       customer: customerId,
       payment_method_types: ["card"],
       line_items: [
@@ -58,7 +58,31 @@ export async function POST(request: NextRequest) {
       metadata: {
         userId: user.id,
       },
-    })
+    }
+
+    // Add coupon if provided
+    if (couponCode) {
+      try {
+        // Validate coupon exists and is active
+        const coupon = await stripe.coupons.retrieve(couponCode)
+        if (coupon.valid) {
+          sessionConfig.discounts = [{ coupon: couponCode }]
+        } else {
+          return NextResponse.json(
+            { error: "Coupon is not valid or has expired" },
+            { status: 400 }
+          )
+        }
+      } catch (error) {
+        return NextResponse.json(
+          { error: "Invalid coupon code" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Create checkout session
+    const checkoutSession = await stripe.checkout.sessions.create(sessionConfig)
 
     return NextResponse.json({ sessionId: checkoutSession.id })
   } catch (error) {
