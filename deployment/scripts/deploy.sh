@@ -164,13 +164,28 @@ docker-compose up -d
 echo "⏳ Waiting for database to be ready..."
 sleep 30
 
-# Run database migrations
-echo "🗄️ Running database migrations..."
-docker-compose exec -T app npx prisma migrate deploy
+# Check and run database migrations
+echo "🗄️ Checking database migrations..."
+MIGRATION_STATUS=$(docker-compose exec -T app npx prisma migrate status --short 2>/dev/null || echo "error")
+
+if [ "$MIGRATION_STATUS" = "error" ]; then
+    echo "⚠️  Could not check migration status, running migrations anyway..."
+    docker-compose exec -T app npx prisma migrate deploy
+elif [ "$MIGRATION_STATUS" = "Database schema is up to date!" ]; then
+    echo "✅ Database schema is already up to date, skipping migrations"
+elif echo "$MIGRATION_STATUS" | grep -q "pending"; then
+    echo "📝 Found pending migrations, applying them..."
+    docker-compose exec -T app npx prisma migrate deploy
+else
+    echo "🔄 Running migrations to ensure database is current..."
+    docker-compose exec -T app npx prisma migrate deploy
+fi
 
 # Generate Prisma client (if needed)
 echo "🔧 Generating Prisma client..."
-docker-compose exec -T app npx prisma generate
+if ! docker-compose exec -T app npx prisma generate 2>/dev/null; then
+    echo "⚠️  Prisma client generation failed, but continuing deployment..."
+fi
 
 # Check if services are running
 echo "🔍 Checking service status..."
