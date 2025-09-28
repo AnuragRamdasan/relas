@@ -375,7 +375,40 @@ docker-compose restart app
 - Optimize database queries
 - Consider upgrading server size
 
-### 7.3 Log Analysis
+### 7.3 Cloudflare 521 Errors
+
+**521 Error means "Web server is down":**
+```bash
+# Quick fix (run on your server)
+./deployment/scripts/fix-521.sh
+
+# Detailed diagnosis
+./deployment/scripts/troubleshoot-521.sh
+```
+
+**Common causes:**
+- Nginx container not running or crashed
+- Wrong nginx configuration (not using Cloudflare config)
+- Port 80 not accessible from outside
+- Application container not responding
+- Firewall blocking port 80
+
+**Manual troubleshooting:**
+```bash
+# Check container status
+docker-compose ps
+
+# Restart containers
+docker-compose restart
+
+# Check if port 80 is bound
+netstat -tlnp | grep :80
+
+# Test local connectivity
+curl -I http://localhost:80
+```
+
+### 7.4 Log Analysis
 
 **View specific logs:**
 ```bash
