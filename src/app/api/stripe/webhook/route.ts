@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { stripe } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
+import { sendWelcomeMessageSequence } from "@/lib/welcome-messages"
 import Stripe from "stripe"
 
 // Simple in-memory cache for processed events (use Redis in production)
@@ -115,7 +116,16 @@ async function handleSubscriptionCreated(
     })
 
     // Send welcome message via Twilio
-    await sendWelcomeMessage(userId)
+    const messageResult = await sendWelcomeMessageSequence({
+      userId,
+      trigger: "subscription_created"
+    })
+    
+    if (messageResult.success) {
+      console.log(`Welcome messages sent to new subscriber ${userId}: ${messageResult.messagesSent} messages via ${messageResult.platform}`)
+    } else {
+      console.error(`Failed to send welcome messages to ${userId}: ${messageResult.error}`)
+    }
   } catch (error) {
     console.error("Error handling subscription created:", error)
   }
@@ -165,33 +175,21 @@ async function handleSuccessfulPayment(subscriptionId: string) {
         where: { id: subscription.userId },
         data: { isSubscribed: true },
       })
+
+      // Send welcome message sequence for payment success
+      const messageResult = await sendWelcomeMessageSequence({
+        userId: subscription.userId,
+        trigger: "payment_success"
+      })
+      
+      if (messageResult.success) {
+        console.log(`Welcome messages sent to user ${subscription.userId}: ${messageResult.messagesSent} messages via ${messageResult.platform}`)
+      } else {
+        console.error(`Failed to send welcome messages to ${subscription.userId}: ${messageResult.error}`)
+      }
     }
   } catch (error) {
     console.error("Error handling successful payment:", error)
   }
 }
 
-async function sendWelcomeMessage(userId: string) {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    })
-
-    if (user?.phone) {
-      const response = await fetch("/api/twilio/send-message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: user.phone,
-          message: `Hi ${user.name}! 🎉 Welcome to your personal relationship assistant! I'm here to help you navigate your relationship journey. Feel free to text me anytime you need guidance, support, or just want to talk. How are you feeling about your relationship today?`,
-        }),
-      })
-
-      if (!response.ok) {
-        console.error("Failed to send welcome message")
-      }
-    }
-  } catch (error) {
-    console.error("Error sending welcome message:", error)
-  }
-}

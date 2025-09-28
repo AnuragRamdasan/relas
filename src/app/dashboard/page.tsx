@@ -30,6 +30,7 @@ export default function Dashboard() {
     phone?: string;
     name?: string;
   } | null>(null)
+  const [startingConversation, setStartingConversation] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -60,6 +61,45 @@ export default function Dashboard() {
       console.error("Error fetching dashboard data:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleStartConversation = async () => {
+    if (!userProfile?.isSubscribed) {
+      alert("Please upgrade to premium to start conversations")
+      router.push("/subscription")
+      return
+    }
+
+    if (!userProfile?.phone) {
+      alert("Please add your phone number in settings to start conversations")
+      return
+    }
+
+    setStartingConversation(true)
+    
+    try {
+      const response = await fetch("/api/conversations/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        alert(`${result.message} You should receive a message shortly on your phone.`)
+        // Refresh the dashboard to show the new conversation
+        fetchDashboardData()
+      } else {
+        alert(`Failed to start conversation: ${result.error}`)
+      }
+    } catch (error) {
+      console.error("Error starting conversation:", error)
+      alert("Failed to start conversation. Please try again.")
+    } finally {
+      setStartingConversation(false)
     }
   }
 
@@ -120,12 +160,46 @@ export default function Dashboard() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {session?.user?.name}!
-          </h1>
-          <p className="text-gray-600">
-            Track your relationship conversations and emotional insights
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Welcome back, {session?.user?.name}!
+              </h1>
+              <p className="text-gray-600">
+                Track your relationship conversations and emotional insights
+              </p>
+            </div>
+            <div className="mt-4 sm:mt-0">
+              <button
+                onClick={handleStartConversation}
+                disabled={startingConversation || !userProfile?.isSubscribed || !userProfile?.phone}
+                className={`px-6 py-3 rounded-lg font-medium text-white transition-colors ${
+                  startingConversation 
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : !userProfile?.isSubscribed || !userProfile?.phone
+                    ? "bg-gray-400 cursor-not-allowed" 
+                    : "bg-purple-600 hover:bg-purple-700"
+                }`}
+              >
+                {startingConversation ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Starting...
+                  </span>
+                ) : (
+                  <>💬 Start New Conversation</>
+                )}
+              </button>
+              {(!userProfile?.isSubscribed || !userProfile?.phone) && (
+                <p className="text-xs text-gray-500 mt-1 text-center">
+                  {!userProfile?.isSubscribed ? "Premium required" : "Phone number required"}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Subscription Status */}
@@ -219,9 +293,22 @@ export default function Dashboard() {
               ) : (
                 <div className="text-center py-8">
                   <p className="text-gray-500 mb-4">No conversations yet</p>
-                  <p className="text-sm text-gray-400">
-                    Start texting your AI assistant to begin!
+                  <p className="text-sm text-gray-400 mb-4">
+                    Click &quot;Start New Conversation&quot; above to begin!
                   </p>
+                  {userProfile?.isSubscribed && userProfile?.phone ? (
+                    <button
+                      onClick={handleStartConversation}
+                      disabled={startingConversation}
+                      className="text-sm bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:bg-gray-400"
+                    >
+                      {startingConversation ? "Starting..." : "💬 Start First Conversation"}
+                    </button>
+                  ) : (
+                    <p className="text-xs text-gray-400">
+                      {!userProfile?.isSubscribed ? "Upgrade to premium first" : "Add phone number in settings"}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
