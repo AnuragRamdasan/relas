@@ -16,26 +16,41 @@ interface StripeSubscriptionWithPeriods extends Stripe.Subscription {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.text()
-  const headersList = await headers()
-  const signature = headersList.get("stripe-signature")
-
-  if (!signature) {
-    return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 })
-  }
-
-  let event: Stripe.Event
-
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    )
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err)
-    return NextResponse.json({ error: "Webhook Error" }, { status: 400 })
-  }
+    console.log("🚀 WEBHOOK ENDPOINT CALLED")
+    
+    const body = await request.text()
+    const headersList = await headers()
+    const signature = headersList.get("stripe-signature")
+
+    console.log("📨 Webhook request details:", {
+      bodyLength: body.length,
+      hasSignature: !!signature,
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ? "SET" : "MISSING",
+      timestamp: new Date().toISOString()
+    })
+
+    if (!signature) {
+      console.error("❌ Missing stripe-signature header")
+      return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 })
+    }
+
+    let event: Stripe.Event
+
+    try {
+      console.log("🔐 Attempting to verify webhook signature...")
+      event = stripe.webhooks.constructEvent(
+        body,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET!
+      )
+      console.log("✅ Webhook signature verified successfully")
+    } catch (err) {
+      console.error("❌ Webhook signature verification failed:", err)
+      console.error("Signature:", signature)
+      console.error("Webhook secret exists:", !!process.env.STRIPE_WEBHOOK_SECRET)
+      return NextResponse.json({ error: "Webhook Error" }, { status: 400 })
+    }
 
   // Check for duplicate events
   if (processedEvents.has(event.id)) {
@@ -133,7 +148,13 @@ export async function POST(request: NextRequest) {
       console.log(`Unhandled event type: ${event.type}`)
   }
 
-  return NextResponse.json({ received: true })
+    console.log("✅ Webhook processing completed successfully")
+    return NextResponse.json({ received: true })
+  } catch (error) {
+    console.error("💥 UNHANDLED WEBHOOK ERROR:", error)
+    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace")
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }
 
 async function handleSubscriptionCreated(
