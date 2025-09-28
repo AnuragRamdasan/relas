@@ -3,6 +3,12 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { stripe } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
+import Stripe from "stripe"
+
+interface CheckoutSessionRequest {
+  priceId: string
+  couponCode?: string
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { priceId, couponCode } = await request.json()
+    const { priceId, couponCode }: CheckoutSessionRequest = await request.json()
 
     // Get or create Stripe customer
     const user = await prisma.user.findUnique({
@@ -43,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare checkout session configuration
-    const sessionConfig: any = {
+    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       payment_method_types: ["card"],
       line_items: [
@@ -73,7 +79,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           )
         }
-      } catch (error) {
+      } catch {
         return NextResponse.json(
           { error: "Invalid coupon code" },
           { status: 400 }

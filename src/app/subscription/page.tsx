@@ -3,6 +3,11 @@
 import { useState } from "react"
 import { loadStripe } from "@stripe/stripe-js"
 
+interface CheckoutRequest {
+  priceId: string
+  couponCode?: string
+}
+
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export default function Subscription() {
@@ -16,8 +21,8 @@ export default function Subscription() {
     setCouponError("")
     
     try {
-      const requestBody: any = {
-        priceId: process.env.NEXT_PUBLIC_SUBSCRIPTION_PRICE_ID,
+      const requestBody: CheckoutRequest = {
+        priceId: process.env.NEXT_PUBLIC_SUBSCRIPTION_PRICE_ID!,
       }
       
       // Add coupon code if provided
@@ -88,7 +93,7 @@ export default function Subscription() {
         setCouponError(data.error || "Invalid coupon code")
         setCouponSuccess("")
       }
-    } catch (error) {
+    } catch {
       setCouponError("Failed to validate coupon")
       setCouponSuccess("")
     }

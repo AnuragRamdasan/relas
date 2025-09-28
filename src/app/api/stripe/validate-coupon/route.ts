@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { stripe } from "@/lib/stripe"
+import Stripe from "stripe"
+
+interface ValidateCouponRequest {
+  couponCode: string
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { couponCode } = await request.json()
+    const { couponCode }: ValidateCouponRequest = await request.json()
 
     if (!couponCode) {
       return NextResponse.json({ error: "Coupon code is required" }, { status: 400 })
@@ -24,11 +29,11 @@ export async function POST(request: NextRequest) {
       currency: coupon.currency,
       name: coupon.name,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Coupon validation error:", error)
     
     // Handle Stripe-specific errors
-    if (error.type === 'StripeInvalidRequestError') {
+    if (error instanceof Stripe.errors.StripeInvalidRequestError) {
       return NextResponse.json({ error: "Invalid coupon code" }, { status: 400 })
     }
     
