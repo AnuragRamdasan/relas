@@ -105,9 +105,23 @@ docker-compose ps
 echo ""
 echo "✅ Deployment complete!"
 echo ""
-echo "🔗 Your application should be available at:"
-echo "   HTTP:  http://$(curl -s ifconfig.me)"
-echo "   HTTPS: https://your-domain.com (after SSL setup)"
+
+# Check if using Cloudflare config
+if grep -q "CF-Connecting-IP" "./nginx/sites/relas.conf"; then
+    echo "🌐 Cloudflare configuration detected!"
+    echo "🔗 Your application should be available at:"
+    DOMAIN=$(grep -o 'server_name [^;]*' ./nginx/sites/relas.conf | head -1 | awk '{print $2}' || echo "your-domain.com")
+    echo "   HTTPS: https://$DOMAIN"
+    echo ""
+    echo "⚠️  Important: Ensure Cloudflare is properly configured:"
+    echo "   1. DNS records are proxied (orange cloud)"
+    echo "   2. SSL/TLS mode is set to 'Flexible'"
+    echo "   3. 'Always Use HTTPS' is enabled"
+else
+    echo "🔗 Your application should be available at:"
+    echo "   HTTP:  http://$(curl -s ifconfig.me)"
+    echo "   HTTPS: https://your-domain.com (after SSL setup)"
+fi
 echo ""
 echo "📋 Useful commands:"
 echo "   View logs:     docker-compose logs -f"
