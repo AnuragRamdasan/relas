@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: "subscription",
-      success_url: `${process.env.APP_URL}/dashboard?success=true`,
+      success_url: `${process.env.APP_URL}/subscription/success`,
       cancel_url: `${process.env.APP_URL}/subscription?canceled=true`,
       metadata: {
         userId: user.id,
