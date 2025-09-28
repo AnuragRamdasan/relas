@@ -5,18 +5,34 @@ import { generateRelationshipResponse } from "@/lib/openai"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("🔔 TWILIO WEBHOOK CALLED")
+    
     const formData = await request.formData()
     const body = formData.get("Body") as string
     const from = formData.get("From") as string
     // const to = formData.get("To") as string
     // const messageSid = formData.get("MessageSid") as string
 
+    console.log("📱 Twilio webhook data:", {
+      body,
+      from,
+      timestamp: new Date().toISOString()
+    })
+
     // Determine if this is WhatsApp or SMS
     const isWhatsApp = from.startsWith("whatsapp:")
     const cleanFrom = from.replace("whatsapp:", "")
     const platform = isWhatsApp ? "whatsapp" : "sms"
 
+    console.log("📞 Processed phone data:", {
+      isWhatsApp,
+      cleanFrom,
+      platform
+    })
+
     // Find user by phone number
+    console.log(`🔍 Looking for user with phone: ${cleanFrom}`)
+    
     const user = await prisma.user.findFirst({
       where: {
         phone: cleanFrom,
@@ -28,6 +44,23 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
+      console.log(`❌ No subscribed user found for phone: ${cleanFrom}`)
+      
+      // Let's also check if user exists but isn't subscribed
+      const unsubscribedUser = await prisma.user.findFirst({
+        where: { phone: cleanFrom }
+      })
+      
+      if (unsubscribedUser) {
+        console.log(`⚠️ User exists but not subscribed:`, {
+          id: unsubscribedUser.id,
+          email: unsubscribedUser.email,
+          isSubscribed: unsubscribedUser.isSubscribed
+        })
+      } else {
+        console.log(`❌ No user found with phone: ${cleanFrom}`)
+      }
+      
       // Send error message for non-subscribed users
       await sendMessage({
         to: cleanFrom,
@@ -36,6 +69,13 @@ export async function POST(request: NextRequest) {
       })
       return NextResponse.json({ success: true })
     }
+    
+    console.log(`✅ Found user:`, {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      isSubscribed: user.isSubscribed
+    })
 
     // Find or create active conversation
     let conversation = await prisma.conversation.findFirst({
@@ -78,12 +118,21 @@ export async function POST(request: NextRequest) {
       context: (user.context as Record<string, unknown>) || undefined,
     }
 
+    console.log(`🤖 Generating AI response for user ${user.id}...`)
+    
     const aiResult = await generateRelationshipResponse(
       userProfile,
       body,
       conversation.id,
       platform
     )
+    
+    console.log(`🎯 AI response generated:`, {
+      responseLength: aiResult.response.length,
+      sentiment: aiResult.sentiment,
+      emotions: aiResult.emotions,
+      topics: aiResult.topics
+    })
 
     // Update user message with analysis
     await prisma.message.update({
