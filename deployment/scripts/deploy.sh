@@ -33,21 +33,37 @@ fi
 
 # Clean up nginx configuration to prevent conflicts
 echo "🧹 Cleaning nginx configuration..."
-# Remove any backup or conflicting config files
-find ./nginx/sites/ -name "*.backup" -type f -delete 2>/dev/null || true
-find ./nginx/sites/ -name "relas.conf.backup" -type f -delete 2>/dev/null || true
+# Remove any backup, temporary, or conflicting config files
+find ./nginx/sites/ -name "*.backup*" -type f -delete 2>/dev/null || true
 find ./nginx/sites/ -name "*~" -type f -delete 2>/dev/null || true
+find ./nginx/sites/ -name "*.tmp" -type f -delete 2>/dev/null || true
 
-# Ensure only the main config file exists and is valid
+# Ensure only the main config file exists
 if [ ! -f "./nginx/sites/relas.conf" ]; then
-    echo "❌ Main nginx config file not found: ./nginx/sites/relas.conf"
-    exit 1
+    echo "⚠️  Main nginx config file not found. Using Cloudflare template..."
+    if [ -f "./nginx/sites/relas-cloudflare.conf" ]; then
+        cp ./nginx/sites/relas-cloudflare.conf ./nginx/sites/relas.conf
+        echo "✅ Created main config from Cloudflare template"
+    else
+        echo "❌ No nginx config template found"
+        exit 1
+    fi
 fi
+
+# Remove any other .conf files to prevent conflicts
+find ./nginx/sites/ -name "*.conf" -not -name "relas.conf" -type f -delete 2>/dev/null || true
 
 # Basic validation of nginx config file
 echo "✅ Validating nginx configuration..."
 if grep -q "server_name" "./nginx/sites/relas.conf" && grep -q "proxy_pass" "./nginx/sites/relas.conf"; then
     echo "✅ Nginx configuration appears valid"
+    
+    # Check if using Cloudflare config
+    if grep -q "CF-Connecting-IP" "./nginx/sites/relas.conf"; then
+        echo "🌐 Using Cloudflare-optimized configuration"
+    else
+        echo "🔧 Using standard configuration"
+    fi
 else
     echo "❌ Nginx configuration is missing required directives"
     exit 1
@@ -79,16 +95,34 @@ if docker-compose ps | grep -q "Up"; then
     
     # Special check for nginx - ensure it's actually running and not restarting
     echo "🔍 Checking nginx specifically..."
+    sleep 5  # Give nginx time to start properly
+    
     if docker-compose ps nginx | grep -q "Up"; then
-        echo "✅ Nginx is running successfully!"
+        echo "✅ Nginx container is running!"
+        
+        # Test if nginx is actually responding
+        echo "🔍 Testing nginx connectivity..."
+        if docker-compose exec -T app curl -s http://nginx:80 > /dev/null 2>&1; then
+            echo "✅ Nginx is responding to requests!"
+        else
+            echo "⚠️  Nginx is running but may not be responding properly"
+            echo "Recent nginx logs:"
+            docker-compose logs --tail=10 nginx
+        fi
     else
         echo "❌ Nginx container has issues. Showing logs:"
         docker-compose logs --tail=20 nginx
         echo ""
-        echo "🔧 Common fixes:"
-        echo "   1. Check nginx config: docker-compose exec nginx nginx -t"
-        echo "   2. Remove backup configs: find ./nginx/sites/ -name '*.backup' -delete"
-        echo "   3. Restart nginx: docker-compose restart nginx"
+        echo "🔧 Common issues and fixes:"
+        echo "   1. Configuration conflicts: Remove duplicate config files"
+        echo "   2. Syntax errors: Check nginx config syntax"
+        echo "   3. IP blocking: Ensure config allows necessary traffic"
+        echo "   4. Port conflicts: Check if port 80 is already in use"
+        echo ""
+        echo "🔧 Quick troubleshooting:"
+        echo "   docker-compose exec nginx nginx -t    # Test config"
+        echo "   docker-compose restart nginx          # Restart nginx"
+        echo "   docker-compose logs nginx             # View full logs"
         exit 1
     fi
 else
