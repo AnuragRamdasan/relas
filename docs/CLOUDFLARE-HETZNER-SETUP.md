@@ -161,6 +161,14 @@ nano .env
 
 ### 3.2 Configure Environment Variables
 
+**Option 1: Interactive Setup (Recommended)**
+```bash
+# Run the interactive environment setup script
+./deployment/scripts/setup-env.sh
+```
+
+**Option 2: Manual Setup**
+
 Update `.env` with your settings:
 ```bash
 # Database

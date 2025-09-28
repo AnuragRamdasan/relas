@@ -19,6 +19,90 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
+# Validate critical environment variables
+echo "🔍 Validating environment variables..."
+
+# Function to check if environment variable exists in .env
+check_env_var() {
+    local var_name="$1"
+    local var_description="$2"
+    local is_required="$3"
+    
+    if ! grep -q "^${var_name}=" .env; then
+        if [ "$is_required" = "true" ]; then
+            echo "❌ Missing required environment variable: $var_name"
+            echo "   Description: $var_description"
+            echo "   Please add this to your .env file"
+            return 1
+        else
+            echo "⚠️  Optional environment variable missing: $var_name"
+            echo "   Description: $var_description"
+            return 0
+        fi
+    else
+        # Check if the value is not a placeholder
+        local value=$(grep "^${var_name}=" .env | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+        if [[ "$value" == *"your-"* ]] || [[ "$value" == *"GENERATE"* ]] || [[ "$value" == *"example"* ]] || [ -z "$value" ]; then
+            if [ "$is_required" = "true" ]; then
+                echo "❌ Environment variable $var_name has placeholder value: $value"
+                echo "   Description: $var_description"
+                echo "   Please update with actual value"
+                return 1
+            else
+                echo "⚠️  Environment variable $var_name has placeholder value: $value"
+                return 0
+            fi
+        else
+            echo "✅ $var_name is configured"
+            return 0
+        fi
+    fi
+}
+
+# Track if any required variables are missing
+ENV_ERRORS=0
+
+# Database Configuration
+check_env_var "DATABASE_URL" "PostgreSQL connection string" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+check_env_var "POSTGRES_DB" "Database name" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+check_env_var "POSTGRES_USER" "Database user" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+check_env_var "POSTGRES_PASSWORD" "Database password" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+
+# NextAuth Configuration
+check_env_var "NEXTAUTH_URL" "Application URL for authentication" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+check_env_var "NEXTAUTH_SECRET" "Secret key for NextAuth sessions" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+
+# Stripe Configuration
+check_env_var "STRIPE_SECRET_KEY" "Stripe secret key for payments" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+check_env_var "STRIPE_WEBHOOK_SECRET" "Stripe webhook secret" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+check_env_var "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "Stripe publishable key (client-side)" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+check_env_var "NEXT_PUBLIC_SUBSCRIPTION_PRICE_ID" "Stripe price ID for subscriptions" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+
+# Application Configuration
+check_env_var "APP_URL" "Application base URL" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+
+# Optional but recommended variables
+check_env_var "OPENAI_API_KEY" "OpenAI API key for AI features" false
+check_env_var "TWILIO_ACCOUNT_SID" "Twilio account SID for SMS/WhatsApp" false
+check_env_var "TWILIO_AUTH_TOKEN" "Twilio auth token" false
+check_env_var "GOOGLE_CLIENT_ID" "Google OAuth client ID" false
+
+# Exit if any required variables are missing
+if [ $ENV_ERRORS -gt 0 ]; then
+    echo ""
+    echo "❌ $ENV_ERRORS required environment variable(s) are missing or have placeholder values"
+    echo ""
+    echo "🔧 To fix this:"
+    echo "1. Copy the example file: cp .env.production.example .env"
+    echo "2. Edit the .env file with your actual values: nano .env"
+    echo "3. For Stripe configuration, see: docs/STRIPE-COUPONS.md"
+    echo "4. For complete setup guide, see: docs/CLOUDFLARE-HETZNER-SETUP.md"
+    echo ""
+    exit 1
+fi
+
+echo "✅ All required environment variables are configured"
+
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
     echo "❌ Docker is not running or accessible"
