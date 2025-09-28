@@ -104,86 +104,51 @@ export default function Subscription() {
       <div className="max-w-4xl mx-auto px-4">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Choose Your Plan
+            Subscribe to Access Your Relationship Assistant
           </h1>
           <p className="text-xl text-gray-600">
-            Get unlimited access to your personal relationship assistant
+            Get full access to your personal AI relationship coach
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
-          {/* Free Plan */}
-          <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Free Trial</h3>
-              <div className="text-4xl font-bold text-gray-900 mb-2">$0</div>
-              <p className="text-gray-600 mb-6">7 days free</p>
-              
-              <ul className="text-left space-y-3 mb-8">
-                <li className="flex items-center">
-                  <span className="text-green-500 mr-3">✓</span>
-                  Limited conversation history
-                </li>
-                <li className="flex items-center">
-                  <span className="text-green-500 mr-3">✓</span>
-                  Basic relationship guidance
-                </li>
-                <li className="flex items-center">
-                  <span className="text-red-500 mr-3">✗</span>
-                  Long-term memory
-                </li>
-                <li className="flex items-center">
-                  <span className="text-red-500 mr-3">✗</span>
-                  Personalized insights
-                </li>
-              </ul>
-              
-              <button
-                disabled
-                className="w-full py-3 px-6 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed"
-              >
-                Current Plan
-              </button>
-            </div>
-          </div>
-
+        <div className="max-w-md mx-auto">
           {/* Premium Plan */}
           <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-purple-500 relative">
             <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
               <span className="bg-purple-500 text-white px-4 py-2 rounded-full text-sm font-medium">
-                Recommended
+                Full Access
               </span>
             </div>
             
             <div className="text-center">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Premium</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Relationship Assistant</h3>
               <div className="text-4xl font-bold text-purple-600 mb-2">$19</div>
               <p className="text-gray-600 mb-6">per month</p>
               
               <ul className="text-left space-y-3 mb-8">
                 <li className="flex items-center">
                   <span className="text-green-500 mr-3">✓</span>
-                  Unlimited conversations
+                  24/7 AI relationship coach via SMS & WhatsApp
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-500 mr-3">✓</span>
-                  Full conversation history
+                  Unlimited conversations and messages
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-500 mr-3">✓</span>
-                  Long-term memory & context
+                  Personalized guidance based on your history
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-500 mr-3">✓</span>
-                  Personalized insights
+                  Emotional support and relationship insights
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-500 mr-3">✓</span>
-                  SMS & WhatsApp support
+                  Complete conversation tracking & dashboard
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-500 mr-3">✓</span>
-                  Progress tracking
+                  Cancel anytime, no long-term commitment
                 </li>
               </ul>
               
@@ -239,14 +204,14 @@ export default function Subscription() {
                 disabled={loading}
                 className="w-full py-3 px-6 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
-                {loading ? "Processing..." : "Start Premium"}
+                {loading ? "Processing..." : "Subscribe & Get Access"}
               </button>
             </div>
           </div>
         </div>
 
         <div className="text-center mt-8 text-gray-600">
-          <p>No commitment. Cancel anytime.</p>
+          <p>✅ Secure payment via Stripe • ✅ Cancel anytime • ✅ No long-term contracts</p>
         </div>
       </div>
     </div>

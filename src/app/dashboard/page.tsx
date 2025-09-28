@@ -40,6 +40,13 @@ export default function Dashboard() {
     }
   }, [status, router])
 
+  useEffect(() => {
+    // Redirect non-subscribed users to subscription page
+    if (userProfile !== null && !userProfile.isSubscribed) {
+      router.push("/subscription")
+    }
+  }, [userProfile, router])
+
   const fetchDashboardData = async () => {
     try {
       const [conversationsRes, sentimentRes, profileRes] = await Promise.all([
@@ -65,12 +72,6 @@ export default function Dashboard() {
   }
 
   const handleStartConversation = async () => {
-    if (!userProfile?.isSubscribed) {
-      alert("Please upgrade to premium to start conversations")
-      router.push("/subscription")
-      return
-    }
-
     if (!userProfile?.phone) {
       alert("Please add your phone number in settings to start conversations")
       return
@@ -112,37 +113,6 @@ export default function Dashboard() {
     }
   }
 
-  const getSubscriptionStatus = () => {
-    if (userProfile?.isSubscribed) {
-      return (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <span className="text-green-600 font-medium">✓ Premium Active</span>
-          </div>
-          <p className="text-sm text-green-600 mt-1">
-            Unlimited conversations and full AI memory
-          </p>
-        </div>
-      )
-    } else {
-      return (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-yellow-700 font-medium">⚠ Free Trial</span>
-            <button
-              onClick={() => router.push("/subscription")}
-              className="text-sm bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700"
-            >
-              Upgrade
-            </button>
-          </div>
-          <p className="text-sm text-yellow-700 mt-1">
-            Limited features. Upgrade for full access.
-          </p>
-        </div>
-      )
-    }
-  }
 
   if (loading) {
     return (
@@ -172,11 +142,11 @@ export default function Dashboard() {
             <div className="mt-4 sm:mt-0">
               <button
                 onClick={handleStartConversation}
-                disabled={startingConversation || !userProfile?.isSubscribed || !userProfile?.phone}
+                disabled={startingConversation || !userProfile?.phone}
                 className={`px-6 py-3 rounded-lg font-medium text-white transition-colors ${
                   startingConversation 
                     ? "bg-gray-400 cursor-not-allowed"
-                    : !userProfile?.isSubscribed || !userProfile?.phone
+                    : !userProfile?.phone
                     ? "bg-gray-400 cursor-not-allowed" 
                     : "bg-purple-600 hover:bg-purple-700"
                 }`}
@@ -193,19 +163,15 @@ export default function Dashboard() {
                   <>💬 Start New Conversation</>
                 )}
               </button>
-              {(!userProfile?.isSubscribed || !userProfile?.phone) && (
+              {!userProfile?.phone && (
                 <p className="text-xs text-gray-500 mt-1 text-center">
-                  {!userProfile?.isSubscribed ? "Premium required" : "Phone number required"}
+                  Phone number required
                 </p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Subscription Status */}
-        <div className="mb-8">
-          {getSubscriptionStatus()}
-        </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -296,7 +262,7 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-400 mb-4">
                     Click &quot;Start New Conversation&quot; above to begin!
                   </p>
-                  {userProfile?.isSubscribed && userProfile?.phone ? (
+                  {userProfile?.phone ? (
                     <button
                       onClick={handleStartConversation}
                       disabled={startingConversation}
@@ -306,7 +272,7 @@ export default function Dashboard() {
                     </button>
                   ) : (
                     <p className="text-xs text-gray-400">
-                      {!userProfile?.isSubscribed ? "Upgrade to premium first" : "Add phone number in settings"}
+                      Add phone number in settings first
                     </p>
                   )}
                 </div>
