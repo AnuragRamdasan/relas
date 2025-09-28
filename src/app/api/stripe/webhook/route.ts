@@ -53,9 +53,18 @@ export async function POST(request: NextRequest) {
     eventArray.slice(-500).forEach(id => processedEvents.add(id))
   }
 
+  console.log(`Processing webhook event: ${event.type}`)
+
   switch (event.type) {
     case "checkout.session.completed":
       const session = event.data.object as Stripe.Checkout.Session
+      console.log(`Checkout session completed:`, {
+        sessionId: session.id,
+        mode: session.mode,
+        subscription: session.subscription,
+        metadata: session.metadata,
+        customer: session.customer
+      })
       
       if (session.mode === "subscription" && session.subscription) {
         const subscriptionId = typeof session.subscription === 'string' 
@@ -63,9 +72,33 @@ export async function POST(request: NextRequest) {
           : session.subscription.id
           
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+        console.log(`Retrieved subscription:`, {
+          id: subscription.id,
+          status: subscription.status,
+          customer: subscription.customer
+        })
         
         if (session.metadata?.userId) {
+          console.log(`Processing subscription created for userId: ${session.metadata.userId}`)
           await handleSubscriptionCreated(subscription, session.metadata.userId)
+        } else {
+          console.error(`Missing userId in session metadata:`, session.metadata)
+          // Try to find user by customer email if metadata is missing
+          const customer = await stripe.customers.retrieve(subscription.customer as string)
+          if (customer && !customer.deleted && customer.email) {
+            console.log(`Attempting to find user by email: ${customer.email}`)
+            const user = await prisma.user.findUnique({
+              where: { email: customer.email }
+            })
+            if (user) {
+              console.log(`Found user by email, processing subscription for userId: ${user.id}`)
+              await handleSubscriptionCreated(subscription, user.id)
+            } else {
+              console.error(`Could not find user with email: ${customer.email}`)
+            }
+          } else {
+            console.error(`Could not retrieve customer or customer has no email`)
+          }
         }
       }
       break
@@ -73,11 +106,21 @@ export async function POST(request: NextRequest) {
     case "customer.subscription.updated":
     case "customer.subscription.deleted":
       const subscription = event.data.object as Stripe.Subscription
+      console.log(`Subscription ${event.type}:`, {
+        id: subscription.id,
+        status: subscription.status,
+        customer: subscription.customer
+      })
       await handleSubscriptionUpdated(subscription)
       break
 
     case "invoice.payment_succeeded":
       const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription }
+      console.log(`Invoice payment succeeded:`, {
+        invoiceId: invoice.id,
+        subscription: invoice.subscription,
+        customer: invoice.customer
+      })
       if (invoice.subscription) {
         const subscriptionId = typeof invoice.subscription === 'string' 
           ? invoice.subscription 
@@ -98,8 +141,10 @@ async function handleSubscriptionCreated(
   userId: string
 ) {
   try {
+    console.log(`handleSubscriptionCreated called for userId: ${userId}, subscriptionId: ${subscription.id}`)
+    
     // Create subscription record
-    await prisma.subscription.create({
+    const subscriptionRecord = await prisma.subscription.create({
       data: {
         userId,
         stripeSubscriptionId: subscription.id,
@@ -108,11 +153,16 @@ async function handleSubscriptionCreated(
         currentPeriodEnd: new Date((subscription as StripeSubscriptionWithPeriods).current_period_end * 1000),
       },
     })
+    console.log(`Created subscription record:`, subscriptionRecord)
 
     // Update user subscription status
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: { isSubscribed: true },
+    })
+    console.log(`Updated user subscription status:`, {
+      userId: updatedUser.id,
+      isSubscribed: updatedUser.isSubscribed
     })
 
     // Send welcome message via Twilio
@@ -133,12 +183,16 @@ async function handleSubscriptionCreated(
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   try {
+    console.log(`handleSubscriptionUpdated called for subscriptionId: ${subscription.id}, status: ${subscription.status}`)
+    
     const existingSubscription = await prisma.subscription.findUnique({
       where: { stripeSubscriptionId: subscription.id },
       include: { user: true },
     })
 
     if (existingSubscription) {
+      console.log(`Found existing subscription for userId: ${existingSubscription.userId}`)
+      
       await prisma.subscription.update({
         where: { stripeSubscriptionId: subscription.id },
         data: {
@@ -149,13 +203,19 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
         },
       })
 
+      const isSubscribed = ["active", "trialing"].includes(subscription.status)
+      console.log(`Updating user subscription status to: ${isSubscribed} (status: ${subscription.status})`)
+      
       // Update user subscription status
-      await prisma.user.update({
+      const updatedUser = await prisma.user.update({
         where: { id: existingSubscription.userId },
         data: { 
-          isSubscribed: ["active", "trialing"].includes(subscription.status) 
+          isSubscribed: isSubscribed
         },
       })
+      console.log(`Updated user ${updatedUser.id} isSubscribed to: ${updatedUser.isSubscribed}`)
+    } else {
+      console.error(`No existing subscription found for stripeSubscriptionId: ${subscription.id}`)
     }
   } catch (error) {
     console.error("Error handling subscription updated:", error)
