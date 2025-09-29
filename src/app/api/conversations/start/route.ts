@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { sendMessage, formatPhoneNumber } from "@/lib/twilio"
+import { getOrCreateConversation, sendConversationMessage, formatPhoneForConversations } from "@/lib/twilio-conversations"
 
 export async function POST() {
   try {
@@ -39,54 +39,55 @@ export async function POST() {
       }, { status: 400 })
     }
 
-    const formattedPhone = formatPhoneNumber(user.phone)
+    const formattedPhone = formatPhoneForConversations(user.phone)
     const userName = user.name || "there"
     
     // Create a starter message
     const starterMessage = `Hi ${userName}! 👋 I'm your relationship assistant. How are you feeling about your relationship today? I'm here to listen and help you work through any thoughts or concerns you might have. ❤️`
 
-    // Try SMS first, fallback to WhatsApp
-    const smsResult = await sendMessage({
-      to: formattedPhone,
-      message: starterMessage,
+    // Create or get Twilio Conversation
+    const conversationResult = await getOrCreateConversation({
+      userId: user.id,
+      phone: formattedPhone,
+      name: user.name || undefined,
       platform: "sms"
     })
 
-    let platform = "sms"
-
-    if (!smsResult.success) {
-      console.log(`SMS failed for user ${user.id}, trying WhatsApp...`)
-      const whatsappResult = await sendMessage({
-        to: formattedPhone,
-        message: starterMessage,
-        platform: "whatsapp"
-      })
-      
-      platform = "whatsapp"
-      
-      if (!whatsappResult.success) {
-        return NextResponse.json({
-          error: "Failed to send message via SMS and WhatsApp",
-          details: {
-            sms: smsResult.error,
-            whatsapp: whatsappResult.error
-          }
-        }, { status: 500 })
-      }
+    if (!conversationResult.success) {
+      return NextResponse.json({
+        error: "Failed to create conversation",
+        details: conversationResult.error
+      }, { status: 500 })
     }
 
-    // Create conversation record
+    const { conversation: twilioConversation } = conversationResult
+
+    // Send starter message via Conversations API
+    const messageResult = await sendConversationMessage(
+      twilioConversation.sid,
+      starterMessage,
+      false
+    )
+
+    if (!messageResult.success) {
+      return NextResponse.json({
+        error: "Failed to send starter message",
+        details: messageResult.error
+      }, { status: 500 })
+    }
+
+    // Create conversation record in our database
     const conversation = await prisma.conversation.create({
       data: {
         userId: user.id,
-        title: "New Conversation",
+        title: "Conversations API Chat",
         messages: {
           create: {
             sender: 'assistant',
             content: starterMessage,
             userId: user.id,
             messageType: 'text',
-            platform: platform
+            platform: 'conversations'
           }
         }
       },
@@ -95,12 +96,14 @@ export async function POST() {
       }
     })
 
-    console.log(`Conversation starter sent to user ${user.id} via ${platform}`)
+    console.log(`Conversation starter sent to user ${user.id} via Conversations API`)
+    console.log(`Twilio Conversation SID: ${twilioConversation.sid}`)
 
     return NextResponse.json({
       success: true,
       conversationId: conversation.id,
-      platform,
+      twilioConversationSid: twilioConversation.sid,
+      platform: "conversations",
       message: "Conversation started! Check your phone for a message."
     })
 

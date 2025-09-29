@@ -74,11 +74,63 @@ async function configureTwilio() {
       console.error('❌ WhatsApp configuration error:', error.message)
     }
     
+    // Configure Conversations API
+    console.log('\n💬 Configuring Conversations API...')
+    try {
+      // Check if default service exists
+      const services = await client.conversations.v1.services.list()
+      let serviceSid
+      
+      if (services.length === 0) {
+        // Create new service
+        const service = await client.conversations.v1.services.create({
+          friendlyName: 'Relationship Assistant'
+        })
+        serviceSid = service.sid
+        console.log(`✅ Created Conversations service: ${serviceSid}`)
+      } else {
+        serviceSid = services[0].sid
+        console.log(`✅ Using existing Conversations service: ${serviceSid}`)
+      }
+      
+      // Configure webhook for conversations
+      const conversationsWebhookUrl = `${baseUrl}/api/twilio/conversations-webhook`
+      
+      try {
+        // Configure webhook directly on the service
+        await client.conversations.v1.services(serviceSid).configuration.update({
+          defaultChatServiceSid: serviceSid,
+          reachabilityEnabled: false
+        })
+        
+        // Set webhook configuration on the service
+        await client.conversations.v1.services(serviceSid).configuration.webhooks.update({
+          method: 'POST',
+          filters: ['onMessageAdded', 'onParticipantAdded'],
+          target: 'webhook',
+          'webhook.target': conversationsWebhookUrl
+        })
+        
+        console.log(`✅ Conversations webhook configured: ${conversationsWebhookUrl}`)
+      } catch (convError) {
+        console.log(`⚠️  Conversations webhook configuration had issues: ${convError.message}`)
+        console.log(`📝 Manual configuration needed in Twilio Console:`)
+        console.log(`   1. Go to Conversations > Services > ${serviceSid}`)
+        console.log(`   2. Set webhook URL: ${conversationsWebhookUrl}`)
+        console.log(`   3. Enable events: onMessageAdded, onParticipantAdded`)
+      }
+      
+    } catch (error) {
+      console.log(`⚠️  Conversations API configuration failed: ${error.message}`)
+    }
+
     console.log('\n🎉 Twilio configuration completed!')
     console.log('\n📋 Next steps:')
-    console.log('1. Test SMS by sending a message to your Twilio phone number')
-    console.log('2. For WhatsApp: Follow the sandbox setup instructions above')
-    console.log('3. Check your webhook logs to verify messages are being received')
+    console.log('1. Test Conversations API by using the dashboard "Start Conversation" button')
+    console.log('2. For SMS: Send a message to your Twilio phone number')
+    console.log('3. For WhatsApp: Follow the sandbox setup instructions above')
+    console.log('4. Check your webhook logs to verify messages are being received')
+    console.log('\n🆕 Using Conversations API for better trial account compatibility!')
     
   } catch (error) {
     console.error('💥 Configuration failed:', error.message)
