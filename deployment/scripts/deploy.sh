@@ -187,6 +187,15 @@ if ! docker-compose exec -T app npx prisma generate 2>/dev/null; then
     echo "⚠️  Prisma client generation failed, but continuing deployment..."
 fi
 
+# Configure Twilio for two-way messaging
+echo "📞 Configuring Twilio for two-way messaging..."
+if docker-compose exec -T app npm run configure-twilio 2>/dev/null; then
+    echo "✅ Twilio configuration completed"
+else
+    echo "⚠️  Twilio configuration failed, but continuing deployment..."
+    echo "   You can configure manually with: docker-compose exec app npm run configure-twilio"
+fi
+
 # Check if services are running
 echo "🔍 Checking service status..."
 if docker-compose ps | grep -q "Up"; then
