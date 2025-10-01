@@ -7,8 +7,8 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "setup-twilio": "node scripts/setup-twilio.js",
-    "test-twilio": "node scripts/test-twilio.js"
+    "setup-twilio": "node ./scripts/setup-twilio.js",
+    "test-twilio": "node ./scripts/test-twilio.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
