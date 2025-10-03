@@ -1,11 +1,9 @@
 #!/bin/bash
 
-# Database SSH tunnel script for secure PostgreSQL access
-# Usage: ./scripts/db-tunnel.sh [server-ip]
+# Database access script for SQLite database
+# Usage: ./scripts/db-access.sh [server-ip]
 
 SERVER_IP="${1:-YOUR_SERVER_IP}"
-LOCAL_PORT="5433"
-REMOTE_PORT="5432"
 
 if [ "$SERVER_IP" = "YOUR_SERVER_IP" ]; then
     echo "❌ Please provide your server IP address"
@@ -14,26 +12,26 @@ if [ "$SERVER_IP" = "YOUR_SERVER_IP" ]; then
     exit 1
 fi
 
-echo "🔗 Creating SSH tunnel to PostgreSQL database..."
+echo "🗄️ Accessing SQLite database on remote server..."
 echo "Server: $SERVER_IP"
-echo "Local port: $LOCAL_PORT"
-echo "Remote port: $REMOTE_PORT"
 echo ""
-echo "📋 Database connection details:"
-echo "Host: localhost"
-echo "Port: $LOCAL_PORT"
-echo "Database: relas_db"
-echo "Username: relas_user"
-echo "Password: [check your server's .env file]"
+echo "📋 Database file location: /app/data/production.db"
 echo ""
-echo "🔧 To get the password, run on your server:"
-echo "   grep POSTGRES_PASSWORD .env"
+echo "🔧 To access the database, you can:"
+echo "1. SSH into the server and use sqlite3:"
+echo "   ssh relas@${SERVER_IP}"
+echo "   cd /app && sqlite3 data/production.db"
 echo ""
-echo "⚡ Starting tunnel... (Press Ctrl+C to stop)"
+echo "2. Copy the database file locally:"
+echo "   scp relas@${SERVER_IP}:/app/data/production.db ./production.db"
+echo "   sqlite3 production.db"
+echo ""
+echo "3. Use Prisma Studio remotely:"
+echo "   ssh relas@${SERVER_IP}"
+echo "   cd /app && npx prisma studio"
+echo ""
+echo "⚡ Opening SSH connection... (Press Ctrl+C to exit)"
 echo ""
 
-# Create SSH tunnel
-ssh -L ${LOCAL_PORT}:localhost:${REMOTE_PORT} relas@${SERVER_IP} \
-    -o ServerAliveInterval=60 \
-    -o ServerAliveCountMax=3 \
-    -N
+# Create SSH connection
+ssh relas@${SERVER_IP}

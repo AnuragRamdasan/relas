@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -16,12 +16,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -107,8 +107,8 @@ model Conversation {
   lastMessageAt DateTime  @default(now())
   
   // Conversation context for AI
-  contextSummary String?  @db.Text // AI-generated summary of conversation
-  topicTags      String[] // relationship, communication, conflict, etc.
+  contextSummary String? // AI-generated summary of conversation
+  topicTags      String? // JSON array: relationship, communication, conflict, etc.
   
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages Message[]
@@ -123,7 +123,7 @@ model Message {
   id             String   @id @default(cuid())
   conversationId String
   userId         String
-  content        String   @db.Text
+  content        String
   sender         String   // user, assistant
   
   // Message metadata
@@ -132,12 +132,12 @@ model Message {
   
   // AI analysis
   sentiment      String?  // positive, negative, neutral, mixed
-  emotions       String[] // happy, sad, angry, frustrated, etc.
-  topics         String[] // relationship issues, communication, etc.
+  emotions       String? // JSON array: happy, sad, angry, frustrated, etc.
+  topics         String? // JSON array: relationship issues, communication, etc.
   urgencyLevel   Int?     // 1-5 scale
   
   // References to previous conversations
-  referencedMessageIds String[] // Messages this response references
+  referencedMessageIds String? // JSON array: Messages this response references
   
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -155,12 +155,12 @@ model SentimentLog {
   
   sentiment   String   // positive, negative, neutral, mixed
   confidence  Float    // 0-1 confidence score
-  emotions    String[] // Array of detected emotions
+  emotions    String? // JSON array: detected emotions
   intensity   Float    // 0-1 emotional intensity
   
   // Contextual information
-  triggers    String[] // What caused this sentiment
-  patterns    String[] // Recurring patterns identified
+  triggers    String? // JSON array: What caused this sentiment
+  patterns    String? // JSON array: Recurring patterns identified
   
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   

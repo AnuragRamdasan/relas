@@ -22,28 +22,12 @@ services:
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
       - TWILIO_WHATSAPP_NUMBER=${TWILIO_WHATSAPP_NUMBER}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-    depends_on:
-      - postgres
     volumes:
       - ./logs:/app/logs
+      - ./data:/app/data
     networks:
       - relas-network
 
-  postgres:
-    image: postgres:15-alpine
-    container_name: relas-postgres
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
-    networks:
-      - relas-network
 
   nginx:
     image: nginx:alpine
@@ -63,7 +47,6 @@ services:
       - relas-network
 
 volumes:
-  postgres_data:
 
 networks:
   relas-network:
