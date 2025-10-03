@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { ChevronRight, Eye } from "lucide-react"
 
 interface ConversationData {
   id: string
@@ -61,10 +62,22 @@ export default function Dashboard() {
       ])
 
       if (conversationsRes.ok) {
-        setConversations(await conversationsRes.json())
+        const data = await conversationsRes.json()
+        // Parse topicTags for SQLite compatibility
+        const processedData = data.map((conv: ConversationData & { topicTags: string | string[] }) => ({
+          ...conv,
+          topicTags: typeof conv.topicTags === 'string' ? JSON.parse(conv.topicTags) : conv.topicTags || []
+        }))
+        setConversations(processedData)
       }
       if (sentimentRes.ok) {
-        setSentimentHistory(await sentimentRes.json())
+        const sentimentData = await sentimentRes.json()
+        // Parse emotions for SQLite compatibility
+        const processedSentimentData = sentimentData.map((entry: SentimentData & { emotions: string | string[] }) => ({
+          ...entry,
+          emotions: typeof entry.emotions === 'string' ? JSON.parse(entry.emotions) : entry.emotions || []
+        }))
+        setSentimentHistory(processedSentimentData)
       }
       if (profileRes.ok) {
         setUserProfile(await profileRes.json())
@@ -235,9 +248,20 @@ export default function Dashboard() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Recent Conversations
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Recent Conversations
+                </h2>
+                {conversations.length > 0 && (
+                  <button
+                    onClick={() => router.push("/dashboard/conversations")}
+                    className="flex items-center text-sm text-purple-600 hover:text-purple-700"
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    View All
+                  </button>
+                )}
+              </div>
             </div>
             <div className="p-6">
               {conversations.length > 0 ? (
@@ -245,15 +269,19 @@ export default function Dashboard() {
                   {conversations.slice(0, 5).map((conversation) => (
                     <div
                       key={conversation.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                      onClick={() => router.push(`/dashboard/conversations/${conversation.id}`)}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                     >
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-medium text-gray-900">
                           {conversation.title || "Conversation"}
                         </h3>
-                        <span className="text-sm text-gray-500">
-                          {new Date(conversation.lastMessageAt).toLocaleDateString()}
-                        </span>
+                        <div className="flex items-center text-sm text-gray-500">
+                          <span className="mr-2">
+                            {new Date(conversation.lastMessageAt).toLocaleDateString()}
+                          </span>
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
                       </div>
                       <p className="text-sm text-gray-600 mb-2">
                         {conversation.totalMessages} messages
@@ -268,6 +296,11 @@ export default function Dashboard() {
                               {tag}
                             </span>
                           ))}
+                          {conversation.topicTags.length > 3 && (
+                            <span className="text-xs text-gray-500">
+                              +{conversation.topicTags.length - 3} more
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>

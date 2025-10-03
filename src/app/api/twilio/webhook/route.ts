@@ -124,8 +124,8 @@ export async function POST(request: NextRequest) {
       where: { id: userMessage.id },
       data: {
         sentiment: aiResult.sentiment,
-        emotions: aiResult.emotions,
-        topics: aiResult.topics,
+        emotions: JSON.stringify(aiResult.emotions),
+        topics: JSON.stringify(aiResult.topics),
         urgencyLevel: aiResult.urgencyLevel,
       },
     })
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
         messageId: userMessage.id,
         sentiment: aiResult.sentiment,
         confidence: 0.8,
-        emotions: aiResult.emotions,
+        emotions: JSON.stringify(aiResult.emotions),
         intensity: aiResult.urgencyLevel / 5,
       },
     })

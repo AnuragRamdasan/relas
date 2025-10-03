@@ -106,11 +106,11 @@ async function buildConversationContext(
       sender: msg.sender,
       createdAt: msg.createdAt,
       sentiment: msg.sentiment || undefined,
-      emotions: msg.emotions,
+      emotions: msg.emotions ? JSON.parse(msg.emotions) : undefined,
     })),
     userContext: userContext || {},
     conversationSummary: conversation?.contextSummary || undefined,
-    topicTags: conversation?.topicTags || undefined,
+    topicTags: conversation?.topicTags ? JSON.parse(conversation.topicTags) : undefined,
   }
 }
 
