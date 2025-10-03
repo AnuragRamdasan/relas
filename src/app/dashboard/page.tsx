@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronRight, Eye } from "lucide-react"
+import { ChevronRight, Eye, Settings } from "lucide-react"
 
 interface ConversationData {
   id: string
@@ -169,7 +169,14 @@ export default function Dashboard() {
                 Track your relationship conversations and emotional insights
               </p>
             </div>
-            <div className="mt-4 sm:mt-0">
+            <div className="mt-4 sm:mt-0 flex gap-3">
+              <button
+                onClick={() => router.push("/settings")}
+                className="px-4 py-3 rounded-lg font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                Settings
+              </button>
               <button
                 onClick={handleStartConversation}
                 disabled={startingConversation || !userProfile?.phone}
