@@ -5,6 +5,10 @@ const nextConfig = {
   images: {
     domains: ['lh3.googleusercontent.com'],
   },
+  // Disable turbopack for production builds to avoid font loading issues
+  experimental: {
+    turbo: process.env.NODE_ENV === 'development',
+  },
   webpack: (config, { isServer }) => {
     // Handle Prisma client for standalone builds
     if (isServer) {
