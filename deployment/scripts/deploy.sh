@@ -152,7 +152,7 @@ fi
 
 # Build and start services
 echo "🏗️ Building application..."
-docker-compose build --no-cache
+docker-compose build
 
 echo "🔧 Starting services..."
 docker-compose up -d
@@ -165,17 +165,21 @@ sleep 30
 echo "🗄️ Checking database migrations..."
 MIGRATION_STATUS=$(docker-compose exec -T app npx prisma migrate status --short 2>/dev/null || echo "error")
 
-if [ "$MIGRATION_STATUS" = "error" ]; then
-    echo "⚠️  Could not check migration status, running migrations anyway..."
-    docker-compose exec -T app npx prisma migrate deploy
-elif [ "$MIGRATION_STATUS" = "Database schema is up to date!" ]; then
+# Ensure data directory exists with correct permissions
+echo "📁 Ensuring data directory exists..."
+mkdir -p ./data
+chmod 755 ./data
+
+if [ "$MIGRATION_STATUS" = "Database schema is up to date!" ]; then
     echo "✅ Database schema is already up to date, skipping migrations"
 elif echo "$MIGRATION_STATUS" | grep -q "pending"; then
     echo "📝 Found pending migrations, applying them..."
     docker-compose exec -T app npx prisma migrate deploy
-else
-    echo "🔄 Running migrations to ensure database is current..."
+elif [ ! -f "./data/production.db" ]; then
+    echo "🆕 No database file found, creating initial schema..."
     docker-compose exec -T app npx prisma migrate deploy
+else
+    echo "✅ Database exists and appears current, skipping migrations"
 fi
 
 # Generate Prisma client (if needed)
