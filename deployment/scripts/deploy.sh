@@ -63,10 +63,7 @@ check_env_var() {
 ENV_ERRORS=0
 
 # Database Configuration
-check_env_var "DATABASE_URL" "PostgreSQL connection string" true || ENV_ERRORS=$((ENV_ERRORS + 1))
-check_env_var "POSTGRES_DB" "Database name" true || ENV_ERRORS=$((ENV_ERRORS + 1))
-check_env_var "POSTGRES_USER" "Database user" true || ENV_ERRORS=$((ENV_ERRORS + 1))
-check_env_var "POSTGRES_PASSWORD" "Database password" true || ENV_ERRORS=$((ENV_ERRORS + 1))
+check_env_var "DATABASE_URL" "SQLite database file path" true || ENV_ERRORS=$((ENV_ERRORS + 1))
 
 # NextAuth Configuration
 check_env_var "NEXTAUTH_URL" "Application URL for authentication" true || ENV_ERRORS=$((ENV_ERRORS + 1))
